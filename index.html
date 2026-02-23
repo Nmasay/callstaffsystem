@@ -239,7 +239,10 @@
         }
 
         // --- ロジック ---
-        window.switchGroup = (g) => saveUpdates({ activeGroup: g });
+        window.switchGroup = async (g) => {
+            await saveUpdates({ activeGroup: g });
+            location.reload();
+        };
 
         window.toggleSkip = async (idx) => {
             const grps = JSON.parse(JSON.stringify(callingAppState.groups));
