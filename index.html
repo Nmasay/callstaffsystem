@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>従業員呼び出しシステム - Firebase同期</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Noto+Sans+JP:wght@400;700;900&display=swap');
+        body { font-family: 'Inter', 'Noto Sans JP', sans-serif; }
+        .animate-ping-slow { animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite; }
+        .transition-theme { transition: background-color 0.4s ease, border-color 0.4s ease, color 0.4s ease, box-shadow 0.4s ease; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen">
+    <div id="app" class="max-w-7xl mx-auto p-4 md:p-8 space-y-6">
+        
+        <!-- Header / Group Selector -->
+        <header class="flex flex-col gap-4">
+            <div class="bg-white rounded-2xl shadow-sm p-2 flex justify-between items-center gap-2 border border-slate-100">
+                <div class="flex gap-2 flex-1">
+                    <button id="btnGroupA" class="group-btn flex-1 min-w-0 py-3 px-4 rounded-xl font-black transition-all border">早番A</button>
+                    <button id="btnGroupB" class="group-btn flex-1 min-w-0 py-3 px-4 rounded-xl font-black transition-all border">早番B</button>
+                    <button id="btnGroupC" class="group-btn flex-1 min-w-0 py-3 px-4 rounded-xl font-black transition-all border">遅番C</button>
+                    <button id="btnGroupD" class="group-btn flex-1 min-w-0 py-3 px-4 rounded-xl font-black transition-all border">遅番D</button>
+                </div>
+                <button id="toggleEdit" class="p-3 rounded-xl bg-slate-50 text-slate-400 hover:text-slate-600 transition-all border border-slate-100">
+                    <i data-lucide="settings" class="w-6 h-6"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Edit Section -->
+        <section id="editSection" class="hidden space-y-4 animate-in fade-in slide-in-from-top-4">
+            <!-- 個別追加 -->
+            <div class="bg-amber-50 border border-amber-200 rounded-2xl p-6 shadow-sm">
+                <h3 class="text-amber-800 font-bold mb-4 flex items-center gap-2">
+                    <i data-lucide="plus" class="w-4 h-4"></i> <span id="addSingleLabel">早番A</span>に従業員を個別追加
+                </h3>
+                <form id="addSingleForm" class="flex gap-2">
+                    <input type="text" id="singleInput" placeholder="氏名を入力" class="flex-1 px-4 py-3 rounded-xl border border-amber-200 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-sm bg-white">
+                    <button type="submit" class="bg-amber-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-amber-700 transition-colors shadow-sm active:scale-95">追加</button>
+                </form>
+            </div>
+
+            <!-- 一括登録 -->
+            <div class="bg-blue-50 border border-blue-200 rounded-2xl p-6 shadow-sm">
+                <h3 class="text-blue-800 font-bold mb-2 flex items-center gap-2">
+                    <i data-lucide="file-text" class="w-4 h-4"></i> <span id="editGroupLabel">早番A</span>の名簿を一括登録
+                </h3>
+                <p class="text-xs text-blue-600 mb-4">名前を改行区切りで貼り付けてください。グループ名簿が上書きされます。</p>
+                <textarea id="bulkInput" rows="4" placeholder="名前を1行ずつ入力..." class="w-full px-4 py-3 rounded-xl border border-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm mb-3"></textarea>
+                <div class="flex gap-2">
+                    <button id="bulkBtn" class="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700 transition-colors flex-1">
+                        リストを一括更新
+                    </button>
+                    <button id="clearBtn" class="bg-white text-red-500 border border-red-200 px-6 py-3 rounded-xl font-bold hover:bg-red-50 transition-colors">
+                        全削除
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Main Content -->
+        <div class="grid lg:grid-cols-3 gap-6">
+            <main class="lg:col-span-2 space-y-6">
+                <div id="mainDisplayCard" class="bg-white rounded-3xl shadow-xl overflow-hidden border border-slate-100 min-h-[500px] flex flex-col transition-theme">
+                    <div id="callingHeader" class="p-6 text-center text-white transition-theme duration-500">
+                        <div class="flex justify-between items-center px-4">
+                            <span id="groupIndicator" class="bg-white/20 px-3 py-1 rounded-lg text-xs font-black uppercase">---</span>
+                            <span id="statusLabel" class="text-white/70 text-xs font-bold tracking-[0.2em]">CALLING</span>
+                            <div class="w-10"></div>
+                        </div>
+                        <div class="mt-2 flex justify-center items-center">
+                            <i id="mainBell" data-lucide="bell" class="w-10 h-10 text-white"></i>
+                        </div>
+                    </div>
+
+                    <div class="flex-1 flex flex-col items-center justify-center p-8 text-center relative">
+                        <div id="nameDisplay" class="text-6xl md:text-8xl font-black tracking-tight leading-tight break-words px-4 text-slate-800">
+                            接続中...
+                        </div>
+                        <div id="skipBadge" class="hidden mt-6 bg-red-100 text-red-600 px-6 py-2 rounded-full font-bold text-lg shadow-sm">
+                            一時スキップ中
+                        </div>
+                    </div>
+
+                    <div class="p-6 bg-slate-50 border-t border-slate-100">
+                        <button id="nextBtn" class="w-full flex items-center justify-center gap-3 py-6 px-8 text-white rounded-2xl font-bold shadow-xl transition-theme active:scale-[0.98]">
+                            <span id="nextBtnText" class="text-xl">次の人を呼び出す</span>
+                            <i id="nextBtnIcon" data-lucide="chevron-right" class="w-7 h-7"></i>
+                        </button>
+                    </div>
+                </div>
+            </main>
+
+            <aside class="bg-white rounded-3xl shadow-sm border border-slate-100 flex flex-col max-h-[700px]">
+                <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 rounded-t-3xl">
+                    <h2 class="font-bold flex items-center gap-2 text-slate-600">
+                        <i data-lucide="list" class="w-4 h-4"></i>
+                        名簿リスト <span id="countBadge" class="bg-slate-200 text-slate-600 px-2 py-0.5 rounded-lg text-xs font-bold">0</span>
+                    </h2>
+                    <button id="resetBtn" class="text-slate-300 hover:text-red-500 p-2 transition-colors">
+                        <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                    </button>
+                </div>
+                <div id="memberList" class="flex-1 overflow-y-auto p-4 flex flex-col gap-2">
+                    <!-- リスト項目 -->
+                </div>
+            </aside>
+        </div>
+
+        <footer class="flex justify-between items-center text-[10px] text-slate-400 px-4">
+            <div class="flex items-center gap-4">
+                <span><i data-lucide="volume-2" class="inline w-3 h-3"></i> チャイム同期: 有効</span>
+                <span id="syncStatus" class="border-l pl-4 font-mono">Initializing...</span>
+            </div>
+            <div id="authStatus" class="hidden md:block"></div>
+        </footer>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+        import { getFirestore, doc, onSnapshot, updateDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+
+        // -------------------------------------------------------------------------
+        // 【重要】自分のFirebase設定に書き換えてください
+        // -------------------------------------------------------------------------
+        const firebaseConfig = {
+            apiKey: "AIzaSyAVQSIE31_9L3oadT0koVikEVEh3EeQJBw",
+            authDomain: "callstaffsystem.firebaseapp.com",
+            projectId: "callstaffsystem",
+            storageBucket: "callstaffsystem.firebasestorage.app",
+            messagingSenderId: "52018004009",
+            appId: "1:52018004009:web:be90853cb230c3211f5c38"
+        };
+        
+        const appId = 'employee-call-sync-v7';
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        const statusDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'syncStatus', 'global');
+
+        const groupThemes = {
+            A: { label: '早番A', bg: 'bg-slate-700', active: 'bg-slate-700 text-white shadow-md scale-105', shadow: 'shadow-slate-200', hover: 'hover:bg-slate-800' },
+            B: { label: '早番B', bg: 'bg-indigo-700', active: 'bg-indigo-700 text-white shadow-md scale-105', shadow: 'shadow-indigo-200', hover: 'hover:bg-indigo-800' },
+            C: { label: '遅番C', bg: 'bg-emerald-700', active: 'bg-emerald-700 text-white shadow-md scale-105', shadow: 'shadow-emerald-200', hover: 'hover:bg-emerald-800' },
+            D: { label: '遅番D', bg: 'bg-rose-700', active: 'bg-rose-700 text-white shadow-md scale-105', shadow: 'shadow-rose-200', hover: 'hover:bg-rose-800' }
+        };
+
+        // アプリの状態
+        let callingAppState = {
+            activeGroup: 'A',
+            groups: {
+                A: { currentIndex: 0, members: [] },
+                B: { currentIndex: 0, members: [] },
+                C: { currentIndex: 0, members: [] },
+                D: { currentIndex: 0, members: [] }
+            },
+            triggerChime: false
+        };
+
+        let currentUid = null;
+
+        // 認証
+        const startAuth = async () => {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (err) {
+                document.getElementById('syncStatus').textContent = "接続エラー";
+            }
+        };
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                currentUid = user.uid;
+                document.getElementById('authStatus').textContent = `ID: ${user.uid.substring(0,8)}`;
+                listenToDatabase();
+            }
+        });
+
+        startAuth();
+
+        // リアルタイム同期
+        function listenToDatabase() {
+            onSnapshot(statusDocRef, (snap) => {
+                if (snap.exists()) {
+                    const data = snap.data();
+                    const chimeWasOff = !callingAppState.triggerChime;
+                    
+                    // プレーンなオブジェクトにディープコピーして readonly を回避
+                    callingAppState = JSON.parse(JSON.stringify(data));
+                    
+                    renderUI();
+                    
+                    if (callingAppState.triggerChime && chimeWasOff) {
+                        playChimeSound();
+                    }
+                    document.getElementById('syncStatus').textContent = "クラウド同期中";
+                } else {
+                    const initial = {
+                        activeGroup: 'A',
+                        groups: {
+                            A: { currentIndex: 0, members: [{ name: "早番A-1", disabled: false }] },
+                            B: { currentIndex: 0, members: [{ name: "早番B-1", disabled: false }] },
+                            C: { currentIndex: 0, members: [{ name: "遅番C-1", disabled: false }] },
+                            D: { currentIndex: 0, members: [{ name: "遅番D-1", disabled: false }] }
+                        },
+                        triggerChime: false,
+                        lastUpdated: Date.now()
+                    };
+                    setDoc(statusDocRef, initial);
+                }
+            }, (err) => {
+                document.getElementById('syncStatus').textContent = "同期エラー";
+            });
+        }
+
+        async function saveUpdates(updates) {
+            if (!currentUid) {
+                alert("エラー: サーバーに接続されていません。画面をリロードしてください。");
+                return;
+            }
+            try {
+                await updateDoc(statusDocRef, {
+                    ...updates,
+                    lastUpdated: Date.now()
+                });
+            } catch (e) {
+                console.error("Save Fail:", e);
+                alert("保存エラー: " + e.message + "\n\nFirebaseコンソールの「Firestore Database」→「ルール」設定を確認してください。");
+            }
+        }
+
+        // --- ロジック ---
+        window.switchGroup = (g) => saveUpdates({ activeGroup: g });
+
+        window.toggleSkip = async (idx) => {
+            const grps = JSON.parse(JSON.stringify(callingAppState.groups));
+            grps[callingAppState.activeGroup].members[idx].disabled = !grps[callingAppState.activeGroup].members[idx].disabled;
+            await saveUpdates({ groups: grps });
+            location.reload();
+        };
+
+        window.moveItem = async (idx, dir) => {
+            const grps = JSON.parse(JSON.stringify(callingAppState.groups));
+            const group = grps[callingAppState.activeGroup];
+            const list = group.members;
+            const target = idx + dir;
+            if (target < 0 || target >= list.length) return;
+            
+            const [moved] = list.splice(idx, 1);
+            list.splice(target, 0, moved);
+
+            if (group.currentIndex === idx) {
+                group.currentIndex = target;
+            } else if (idx > group.currentIndex && target <= group.currentIndex) {
+                group.currentIndex++;
+            } else if (idx < group.currentIndex && target >= group.currentIndex) {
+                group.currentIndex--;
+            }
+            await saveUpdates({ groups: grps });
+            location.reload();
+        };
+
+        window.removeItem = async (idx) => {
+            const grps = JSON.parse(JSON.stringify(callingAppState.groups));
+            const group = grps[callingAppState.activeGroup];
+            group.members.splice(idx, 1);
+            if (group.currentIndex >= group.members.length && group.members.length > 0) {
+                group.currentIndex = group.members.length - 1;
+            }
+            await saveUpdates({ groups: grps });
+            location.reload();
+        };
+
+        // 編集モード切替
+        document.getElementById('toggleEdit').onclick = () => {
+            document.getElementById('editSection').classList.toggle('hidden');
+            renderUI();
+        };
+
+        // --- UI ---
+        function renderUI() {
+            const activeKey = callingAppState.activeGroup;
+            const theme = groupThemes[activeKey];
+            const groupData = callingAppState.groups[activeKey] || { currentIndex: 0, members: [] };
+            const currentMember = (groupData.members && groupData.members[groupData.currentIndex]) || { name: "名簿が空です", disabled: false };
+            const atEnd = groupData.members && groupData.currentIndex === groupData.members.length - 1;
+
+            ['A','B','C','D'].forEach(k => {
+                const btn = document.getElementById(`btnGroup${k}`);
+                if (btn) {
+                    btn.className = activeKey === k ? `group-btn flex-1 py-3 px-4 rounded-xl font-black transition-all border border-transparent ${groupThemes[k].active}` : `group-btn flex-1 py-3 px-4 rounded-xl font-black transition-all border bg-white text-slate-400 hover:bg-slate-100 border-slate-200`;
+                    btn.onclick = () => window.switchGroup(k);
+                }
+            });
+
+            document.getElementById('editGroupLabel').textContent = theme.label;
+            document.getElementById('addSingleLabel').textContent = theme.label;
+            document.getElementById('groupIndicator').textContent = theme.label;
+            
+            const nameEl = document.getElementById('nameDisplay');
+            nameEl.textContent = currentMember.name;
+            nameEl.className = `text-6xl md:text-8xl font-black tracking-tight leading-tight break-words px-4 ${currentMember.disabled ? 'text-slate-200' : 'text-slate-800'}`;
+            
+            document.getElementById('callingHeader').className = `p-6 text-center text-white transition-theme duration-500 ${currentMember.disabled ? 'bg-slate-400' : theme.bg}`;
+            document.getElementById('statusLabel').textContent = currentMember.disabled ? 'SKIPPED' : 'CALLING';
+            document.getElementById('mainBell').className = `w-10 h-10 text-white ${!currentMember.disabled ? 'animate-bounce' : 'opacity-30'}`;
+            document.getElementById('skipBadge').classList.toggle('hidden', !currentMember.disabled);
+
+            const nBtn = document.getElementById('nextBtn');
+            const colorClass = atEnd ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-200' : `${theme.bg} ${theme.hover} ${theme.shadow}`;
+            nBtn.className = `w-full flex items-center justify-center gap-3 py-6 px-8 text-white rounded-2xl font-bold shadow-xl transition-theme active:scale-[0.98] ${colorClass}`;
+            document.getElementById('nextBtnText').textContent = atEnd ? "リストの先頭に戻る" : "次の人を呼び出す";
+
+            const listEl = document.getElementById('memberList');
+            listEl.innerHTML = '';
+            document.getElementById('countBadge').textContent = groupData.members ? groupData.members.length : 0;
+
+            const isEditing = !document.getElementById('editSection').classList.contains('hidden');
+
+            if (groupData.members) {
+                groupData.members.forEach((m, i) => {
+                    const isFocus = i === groupData.currentIndex;
+                    const item = document.createElement('div');
+                    let numBg = isFocus ? (activeKey === 'B' ? 'bg-indigo-700' : activeKey === 'C' ? 'bg-emerald-700' : activeKey === 'D' ? 'bg-rose-700' : 'bg-slate-700') : 'bg-slate-100';
+                    let activeRow = isFocus ? `bg-slate-100 ring-2 ${activeKey === 'B' ? 'ring-indigo-100 border-indigo-300' : activeKey === 'C' ? 'ring-emerald-100 border-emerald-300' : activeKey === 'D' ? 'ring-rose-100 border-rose-300' : 'ring-slate-100 border-slate-300'}` : 'bg-white border-slate-100';
+
+                    item.className = `p-4 rounded-xl flex items-center justify-between transition-all border ${activeRow} ${m.disabled && !isFocus ? 'opacity-40 bg-slate-50' : ''} ${m.disabled && isFocus ? 'bg-slate-50' : ''}`;
+                    item.innerHTML = `
+                        <div class="flex items-center gap-3 overflow-hidden flex-1">
+                            <span class="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold ${isFocus ? 'text-white' : 'text-slate-400'} ${numBg}">${i + 1}</span>
+                            <div class="flex flex-col truncate">
+                                <span class="font-bold truncate ${isFocus ? 'text-slate-900' : 'text-slate-600'} ${m.disabled ? 'line-through decoration-slate-400' : ''}">${m.name}</span>
+                                ${m.disabled ? '<span class="text-[10px] text-slate-400 font-bold">スキップ中</span>' : ''}
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-1 ml-2">
+                            <button id="skip-btn-${i}" class="p-2 rounded-lg hover:bg-slate-200 transition-colors ${m.disabled ? 'text-red-500' : 'text-slate-300'}"><i data-lucide="${m.disabled ? 'user-minus' : 'user-check'}" class="w-5 h-5"></i></button>
+                            ${isEditing ? `<div class="flex items-center gap-1 ml-1 border-l pl-2 border-slate-200"><button id="up-btn-${i}" class="p-1 text-slate-400"><i data-lucide="chevron-up" class="w-4 h-4"></i></button><button id="dn-btn-${i}" class="p-1 text-slate-400"><i data-lucide="chevron-down" class="w-4 h-4"></i></button><button id="rm-btn-${i}" class="p-1 text-red-400"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div>` : (isFocus ? `<div class="${numBg} text-white px-2 py-0.5 rounded text-[9px] font-black animate-pulse">呼出中</div>` : '')}
+                        </div>
+                    `;
+                    listEl.appendChild(item);
+                    document.getElementById(`skip-btn-${i}`).onclick = (e) => { e.stopPropagation(); window.toggleSkip(i); };
+                    if (isEditing) {
+                        document.getElementById(`up-btn-${i}`).onclick = () => window.moveItem(i, -1);
+                        document.getElementById(`dn-btn-${i}`).onclick = () => window.moveItem(i, 1);
+                        document.getElementById(`rm-btn-${i}`).onclick = () => window.removeItem(i);
+                    }
+                });
+            }
+            lucide.createIcons();
+        }
+
+        // イベントバインド
+        document.getElementById('nextBtn').onclick = async () => {
+            const grps = JSON.parse(JSON.stringify(callingAppState.groups));
+            const group = grps[callingAppState.activeGroup];
+            if (!group.members || group.members.length === 0) return;
+            let nextIdx = group.currentIndex;
+            let found = false;
+            for (let i = 1; i <= group.members.length; i++) {
+                const check = (group.currentIndex + i) % group.members.length;
+                if (!group.members[check].disabled) { nextIdx = check; found = true; break; }
+            }
+            if (found) {
+                group.currentIndex = nextIdx;
+                await saveUpdates({ groups: grps, triggerChime: true });
+                location.reload();
+            }
+        };
+
+        document.getElementById('resetBtn').onclick = () => {
+            const grps = JSON.parse(JSON.stringify(callingAppState.groups));
+            grps[callingAppState.activeGroup].currentIndex = 0;
+            saveUpdates({ groups: grps });
+        };
+
+        document.getElementById('addSingleForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const input = document.getElementById('singleInput');
+            if (input.value.trim()) {
+                const grps = JSON.parse(JSON.stringify(callingAppState.groups));
+                grps[callingAppState.activeGroup].members.push({ name: input.value.trim(), disabled: false });
+                await saveUpdates({ groups: grps });
+                location.reload();
+            }
+        };
+
+        document.getElementById('bulkBtn').onclick = async () => {
+            const input = document.getElementById('bulkInput').value;
+            const names = input.split(/\n/).map(l => l.trim()).filter(l => l !== "");
+            if (names.length > 0) {
+                const grps = JSON.parse(JSON.stringify(callingAppState.groups));
+                grps[callingAppState.activeGroup].members = names.map(n => ({ name: n, disabled: false }));
+                grps[callingAppState.activeGroup].currentIndex = 0;
+                await saveUpdates({ groups: grps });
+                location.reload();
+            }
+        };
+
+        document.getElementById('clearBtn').onclick = async () => {
+            if (confirm("名簿をすべて削除しますか？")) {
+                const grps = JSON.parse(JSON.stringify(callingAppState.groups));
+                grps[callingAppState.activeGroup].members = [];
+                grps[callingAppState.activeGroup].currentIndex = 0;
+                await saveUpdates({ groups: grps });
+                location.reload();
+            }
+        };
+
+        function playChimeSound() {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const note = (f, s, d) => {
+                    const o = ctx.createOscillator();
+                    const g = ctx.createGain();
+                    o.type = 'sine'; o.frequency.setValueAtTime(f, s);
+                    g.gain.setValueAtTime(0.2, s); g.gain.exponentialRampToValueAtTime(0.01, s + d);
+                    o.connect(g); g.connect(ctx.destination);
+                    o.start(s); o.stop(s + d);
+                };
+                note(660, ctx.currentTime, 0.4); note(523, ctx.currentTime + 0.2, 0.6);
+            } catch (e) {}
+        }
+    </script>
+</body>
+</html>
