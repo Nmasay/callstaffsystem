@@ -69,11 +69,10 @@
                     <div id="callingHeader" class="p-6 text-center text-white transition-theme duration-500">
                         <div class="flex justify-between items-center px-4">
                             <span id="groupIndicator" class="bg-white/20 px-3 py-1 rounded-lg text-xs font-black uppercase">---</span>
-                            <span id="statusLabel" class="text-white/70 text-xs font-bold tracking-[0.2em]">CALLING</span>
                             <div class="w-10"></div>
                         </div>
-                        <div class="mt-2 flex justify-center items-center">
-                            <i id="mainBell" data-lucide="bell" class="w-10 h-10 text-white"></i>
+                        <div class="mt-4 flex justify-center items-center">
+                            <i id="mainBell" data-lucide="bell" class="w-20 h-20 text-white"></i>
                         </div>
                     </div>
 
@@ -356,8 +355,7 @@
             nameEl.className = `text-6xl md:text-8xl font-black tracking-tight leading-tight break-words px-4 ${currentMember.disabled ? 'text-slate-200' : 'text-slate-800'}`;
             
             document.getElementById('callingHeader').className = `p-6 text-center text-white transition-theme duration-500 ${currentMember.disabled ? 'bg-slate-400' : theme.bg}`;
-            document.getElementById('statusLabel').textContent = currentMember.disabled ? 'SKIPPED' : 'CALLING';
-            document.getElementById('mainBell').className = `w-10 h-10 text-white ${!currentMember.disabled ? 'animate-bounce' : 'opacity-30'}`;
+            document.getElementById('mainBell').className = `w-20 h-20 text-white ${!currentMember.disabled ? 'animate-bounce' : 'opacity-30'}`;
             document.getElementById('skipBadge').classList.toggle('hidden', !currentMember.disabled);
             
             const calledBadge = document.getElementById('calledBadge');
