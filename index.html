@@ -386,7 +386,10 @@
                             <div class="flex items-center gap-2 overflow-hidden flex-1">
                                 <span class="w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center text-[10px] font-bold ${isFocus ? 'text-white' : 'text-slate-400'} ${numBg}">${i + 1}</span>
                                 <div class="flex flex-col truncate">
-                                    <span class="font-bold text-sm truncate ${isFocus ? 'text-slate-900' : 'text-slate-600'} ${m.disabled ? 'line-through decoration-slate-400' : ''}">${m.name}</span>
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-bold text-sm truncate ${isFocus ? 'text-slate-900' : 'text-slate-600'} ${m.disabled ? 'line-through decoration-slate-400' : ''}">${m.name}</span>
+                                        <span class="text-[9px] bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded-md font-mono whitespace-nowrap">x${m.count || 0}</span>
+                                    </div>
                                     ${m.disabled ? '<span class="text-[9px] text-slate-400 font-bold">スキップ</span>' : ''}
                                 </div>
                             </div>
@@ -425,6 +428,7 @@
             }
             if (found) {
                 group.currentIndex = nextIdx;
+                group.members[nextIdx].count = (group.members[nextIdx].count || 0) + 1;
                 await saveUpdates({ groups: grps, triggerChime: true });
                 location.reload();
             }
@@ -435,7 +439,7 @@
             const input = document.getElementById('singleInput');
             if (input.value.trim()) {
                 const grps = JSON.parse(JSON.stringify(callingAppState.groups));
-                grps[callingAppState.activeGroup].members.push({ name: input.value.trim(), disabled: false });
+                grps[callingAppState.activeGroup].members.push({ name: input.value.trim(), disabled: false, count: 0 });
                 await saveUpdates({ groups: grps });
                 location.reload();
             }
@@ -446,7 +450,7 @@
             const names = input.split(/\n/).map(l => l.trim()).filter(l => l !== "");
             if (names.length > 0) {
                 const grps = JSON.parse(JSON.stringify(callingAppState.groups));
-                grps[callingAppState.activeGroup].members = names.map(n => ({ name: n, disabled: false }));
+                grps[callingAppState.activeGroup].members = names.map(n => ({ name: n, disabled: false, count: 0 }));
                 grps[callingAppState.activeGroup].currentIndex = 0;
                 await saveUpdates({ groups: grps });
                 location.reload();
