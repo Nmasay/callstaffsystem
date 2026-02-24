@@ -416,6 +416,10 @@
                         document.getElementById(`skip-btn-${gKey}-${i}`).onclick = (e) => { e.stopPropagation(); window.toggleSkip(gKey, i); };
                         document.getElementById(`up-btn-${gKey}-${i}`).onclick = () => window.moveItem(gKey, i, -1);
                         document.getElementById(`dn-btn-${gKey}-${i}`).onclick = () => window.moveItem(gKey, i, 1);
+
+                        if (isFocus) {
+                            setTimeout(() => item.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
+                        }
                     });
                 }
             });
