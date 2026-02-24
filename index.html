@@ -383,28 +383,22 @@
 
                 if (gData.members) {
                     gData.members.forEach((m, i) => {
-                        const isFocus = i === gData.currentIndex;
-                        const isActiveGroup = gKey === activeKey;
                         const item = document.createElement('div');
                         
-                        let numBg = isFocus ? (gKey === 'B' ? 'bg-indigo-700' : gKey === 'C' ? 'bg-emerald-700' : gKey === 'D' ? 'bg-rose-700' : 'bg-slate-700') : 'bg-slate-100';
-                        let activeRow = isFocus ? `bg-slate-100 ring-2 ${gKey === 'B' ? 'ring-indigo-100 border-indigo-300' : gKey === 'C' ? 'ring-emerald-100 border-emerald-300' : gKey === 'D' ? 'ring-rose-100 border-rose-300' : 'ring-slate-100 border-slate-300'}` : 'bg-white border-slate-100';
-                        
-                        item.className = `p-3 rounded-xl flex items-center justify-between transition-all border ${activeRow} ${m.disabled && !isFocus ? 'opacity-40 bg-slate-50' : ''} ${m.disabled && isFocus ? 'bg-slate-50' : ''}`;
+                        item.className = `p-3 rounded-xl flex items-center justify-between transition-all border bg-white border-slate-100 ${m.disabled ? 'opacity-40 bg-slate-50' : ''}`;
                         
                         item.innerHTML = `
                             <div class="flex items-center gap-2 overflow-hidden flex-1">
-                                <span class="w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center text-[10px] font-bold ${isFocus ? 'text-white' : 'text-slate-400'} ${numBg}">${i + 1}</span>
+                                <span class="w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center text-[10px] font-bold text-slate-400 bg-slate-100">${i + 1}</span>
                                 <div class="flex flex-col truncate">
                                     <div class="flex items-center gap-2">
-                                        <span class="font-bold text-sm truncate ${isFocus ? 'text-slate-900' : 'text-slate-600'} ${m.disabled ? 'line-through decoration-slate-400' : ''}">${m.name}</span>
+                                        <span class="font-bold text-sm truncate text-slate-600 ${m.disabled ? 'line-through decoration-slate-400' : ''}">${m.name}</span>
                                         <span class="text-xs font-bold bg-slate-100 text-slate-500 px-2 py-0.5 rounded-md font-mono whitespace-nowrap">x${m.count || 0}</span>
                                     </div>
                                     ${m.disabled ? '<span class="text-[9px] text-slate-400 font-bold">スキップ</span>' : ''}
                                 </div>
                             </div>
                             <div class="flex items-center gap-1 ml-1">
-                                ${isFocus && !isActiveGroup ? `<div class="bg-slate-200 text-slate-500 px-1.5 py-0.5 rounded text-[8px] font-bold">待機</div>` : ''}
                                 <button id="skip-btn-${gKey}-${i}" class="p-1.5 rounded-lg hover:bg-slate-200 transition-colors ${m.disabled ? 'text-red-500' : 'text-slate-300'}"><i data-lucide="${m.disabled ? 'user-minus' : 'user-check'}" class="w-4 h-4"></i></button>
                                 <div class="flex items-center gap-0.5 ml-1 border-l pl-1 border-slate-200">
                                     <button id="up-btn-${gKey}-${i}" class="p-1 text-slate-300 hover:text-slate-600"><i data-lucide="chevron-up" class="w-3 h-3"></i></button>
@@ -416,10 +410,6 @@
                         document.getElementById(`skip-btn-${gKey}-${i}`).onclick = (e) => { e.stopPropagation(); window.toggleSkip(gKey, i); };
                         document.getElementById(`up-btn-${gKey}-${i}`).onclick = () => window.moveItem(gKey, i, -1);
                         document.getElementById(`dn-btn-${gKey}-${i}`).onclick = () => window.moveItem(gKey, i, 1);
-
-                        if (isFocus) {
-                            setTimeout(() => item.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
-                        }
                     });
                 }
             });
