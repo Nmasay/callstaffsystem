@@ -81,6 +81,9 @@
                         <div id="nameDisplay" class="text-6xl md:text-8xl font-black tracking-tight leading-tight break-words px-4 text-slate-800">
                             接続中...
                         </div>
+                        <div id="calledBadge" class="hidden mt-4 px-6 py-2 rounded-full font-bold text-lg shadow-sm animate-pulse text-white">
+                            呼出済み
+                        </div>
                         <div id="skipBadge" class="hidden mt-6 bg-red-100 text-red-600 px-6 py-2 rounded-full font-bold text-lg shadow-sm">
                             一時スキップ中
                         </div>
@@ -356,6 +359,14 @@
             document.getElementById('statusLabel').textContent = currentMember.disabled ? 'SKIPPED' : 'CALLING';
             document.getElementById('mainBell').className = `w-10 h-10 text-white ${!currentMember.disabled ? 'animate-bounce' : 'opacity-30'}`;
             document.getElementById('skipBadge').classList.toggle('hidden', !currentMember.disabled);
+            
+            const calledBadge = document.getElementById('calledBadge');
+            if (!currentMember.disabled && groupData.members && groupData.members.length > 0) {
+                calledBadge.className = `mt-4 px-6 py-2 rounded-full font-bold text-lg shadow-sm animate-pulse text-white ${theme.bg}`;
+                calledBadge.classList.remove('hidden');
+            } else {
+                calledBadge.classList.add('hidden');
+            }
 
             const nBtn = document.getElementById('nextBtn');
             const colorClass = atEnd ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-200' : `${theme.bg} ${theme.hover} ${theme.shadow}`;
@@ -388,13 +399,12 @@
                                 <div class="flex flex-col truncate">
                                     <div class="flex items-center gap-2">
                                         <span class="font-bold text-sm truncate ${isFocus ? 'text-slate-900' : 'text-slate-600'} ${m.disabled ? 'line-through decoration-slate-400' : ''}">${m.name}</span>
-                                        <span class="text-[9px] bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded-md font-mono whitespace-nowrap">x${m.count || 0}</span>
+                                        <span class="text-xs font-bold bg-slate-100 text-slate-500 px-2 py-0.5 rounded-md font-mono whitespace-nowrap">x${m.count || 0}</span>
                                     </div>
                                     ${m.disabled ? '<span class="text-[9px] text-slate-400 font-bold">スキップ</span>' : ''}
                                 </div>
                             </div>
                             <div class="flex items-center gap-1 ml-1">
-                                ${isFocus && isActiveGroup ? `<div class="${numBg} text-white px-1.5 py-0.5 rounded text-[8px] font-black animate-pulse">呼出中</div>` : ''}
                                 ${isFocus && !isActiveGroup ? `<div class="bg-slate-200 text-slate-500 px-1.5 py-0.5 rounded text-[8px] font-bold">待機</div>` : ''}
                                 <button id="skip-btn-${gKey}-${i}" class="p-1.5 rounded-lg hover:bg-slate-200 transition-colors ${m.disabled ? 'text-red-500' : 'text-slate-300'}"><i data-lucide="${m.disabled ? 'user-minus' : 'user-check'}" class="w-4 h-4"></i></button>
                                 <div class="flex items-center gap-0.5 ml-1 border-l pl-1 border-slate-200">
