@@ -16,9 +16,9 @@
 
     <div class="w-full max-w-5xl">
         <div id="mainDisplayCard" class="bg-white rounded-[3rem] shadow-2xl overflow-hidden border border-slate-100 min-h-[70vh] flex flex-col transition-theme">
-            <div id="callingHeader" class="relative py-4 px-6 text-center text-white transition-theme duration-500 flex items-center justify-center min-h-[80px]">
-                <span id="groupIndicator" class="absolute left-6 bg-white/20 px-4 py-2 rounded-xl text-sm font-black uppercase tracking-wider">---</span>
-                <i id="mainBell" data-lucide="bell" class="w-12 h-12 text-white"></i>
+            <div id="callingHeader" class="relative py-2 px-4 text-center text-white transition-theme duration-500 flex items-center justify-center gap-4 min-h-[64px]">
+                <span id="groupIndicator" class="bg-white/20 px-4 py-1 rounded-lg text-xl font-medium uppercase">---</span>
+                <i id="mainBell" data-lucide="bell" class="w-10 h-10 text-white"></i>
             </div>
 
             <div class="flex-1 flex flex-col items-center justify-center p-8 text-center relative">
@@ -116,8 +116,8 @@
             `;
             nameEl.className = `text-7xl md:text-9xl font-black tracking-tight leading-tight break-words px-4 ${currentMember.disabled ? 'text-slate-200' : 'text-slate-800'}`;
             
-            document.getElementById('callingHeader').className = `relative py-4 px-6 text-center text-white transition-theme duration-500 flex items-center justify-center min-h-[80px] ${currentMember.disabled ? 'bg-slate-400' : theme.bg}`;
-            document.getElementById('mainBell').className = `w-12 h-12 text-white ${!currentMember.disabled ? 'animate-bounce' : 'opacity-30'}`;
+            document.getElementById('callingHeader').className = `relative py-2 px-4 text-center text-white transition-theme duration-500 flex items-center justify-center gap-4 min-h-[64px] ${currentMember.disabled ? 'bg-slate-400' : theme.bg}`;
+            document.getElementById('mainBell').className = `w-10 h-10 text-white ${!currentMember.disabled ? 'animate-bounce' : 'opacity-30'}`;
             document.getElementById('skipBadge').classList.toggle('hidden', !currentMember.disabled);
             
             const calledBadge = document.getElementById('calledBadge');
