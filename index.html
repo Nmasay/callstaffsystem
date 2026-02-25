@@ -66,14 +66,9 @@
         <div class="flex flex-col gap-6">
             <main class="space-y-6">
                 <div id="mainDisplayCard" class="bg-white rounded-3xl shadow-xl overflow-hidden border border-slate-100 min-h-[500px] flex flex-col transition-theme">
-                    <div id="callingHeader" class="p-6 text-center text-white transition-theme duration-500">
-                        <div class="flex justify-between items-center px-4">
-                            <span id="groupIndicator" class="bg-white/20 px-3 py-1 rounded-lg text-xs font-black uppercase">---</span>
-                            <div class="w-10"></div>
-                        </div>
-                        <div class="mt-4 flex justify-center items-center">
-                            <i id="mainBell" data-lucide="bell" class="w-20 h-20 text-white"></i>
-                        </div>
+                    <div id="callingHeader" class="relative py-2 px-4 text-center text-white transition-theme duration-500 flex items-center justify-center min-h-[64px]">
+                        <span id="groupIndicator" class="absolute left-4 bg-white/20 px-3 py-1 rounded-lg text-xs font-black uppercase">---</span>
+                        <i id="mainBell" data-lucide="bell" class="w-10 h-10 text-white"></i>
                     </div>
 
                     <div class="flex-1 flex flex-col items-center justify-center p-8 text-center relative">
@@ -241,10 +236,10 @@
                     const initial = {
                         activeGroup: 'A',
                         groups: {
-                            A: { currentIndex: 0, members: [{ name: "早番A-1", disabled: false }] },
-                            B: { currentIndex: 0, members: [{ name: "早番B-1", disabled: false }] },
-                            C: { currentIndex: 0, members: [{ name: "遅番C-1", disabled: false }] },
-                            D: { currentIndex: 0, members: [{ name: "遅番D-1", disabled: false }] }
+                            A: { currentIndex: 0, members: [{ name: "早番A-1", disabled: false, count: 0 }] },
+                            B: { currentIndex: 0, members: [{ name: "早番B-1", disabled: false, count: 0 }] },
+                            C: { currentIndex: 0, members: [{ name: "遅番C-1", disabled: false, count: 0 }] },
+                            D: { currentIndex: 0, members: [{ name: "遅番D-1", disabled: false, count: 0 }] }
                         },
                         triggerChime: false,
                         lastUpdated: Date.now()
@@ -301,6 +296,7 @@
                 group.currentIndex--;
             }
             await saveUpdates({ groups: grps });
+            location.reload();
         };
 
         window.removeItem = async (gKey, idx) => {
@@ -352,8 +348,8 @@
             `;
             nameEl.className = `text-6xl md:text-8xl font-black tracking-tight leading-tight break-words px-4 ${currentMember.disabled ? 'text-slate-200' : 'text-slate-800'}`;
             
-            document.getElementById('callingHeader').className = `p-6 text-center text-white transition-theme duration-500 ${currentMember.disabled ? 'bg-slate-400' : theme.bg}`;
-            document.getElementById('mainBell').className = `w-20 h-20 text-white ${!currentMember.disabled ? 'animate-bounce' : 'opacity-30'}`;
+            document.getElementById('callingHeader').className = `relative py-2 px-4 text-center text-white transition-theme duration-500 flex items-center justify-center min-h-[64px] ${currentMember.disabled ? 'bg-slate-400' : theme.bg}`;
+            document.getElementById('mainBell').className = `w-10 h-10 text-white ${!currentMember.disabled ? 'animate-bounce' : 'opacity-30'}`;
             document.getElementById('skipBadge').classList.toggle('hidden', !currentMember.disabled);
             
             const calledBadge = document.getElementById('calledBadge');
@@ -464,17 +460,32 @@
 
         function playChimeSound() {
             try {
-                const ctx = new (window.AudioContext || window.webkitAudioContext)();
-                const note = (f, s, d) => {
-                    const o = ctx.createOscillator();
-                    const g = ctx.createGain();
-                    o.type = 'sine'; o.frequency.setValueAtTime(f, s);
-                    g.gain.setValueAtTime(0.2, s); g.gain.exponentialRampToValueAtTime(0.01, s + d);
-                    o.connect(g); g.connect(ctx.destination);
-                    o.start(s); o.stop(s + d);
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContext) return;
+                
+                const ctx = new AudioContext();
+                const now = ctx.currentTime;
+                
+                const note = (freq, offset, duration) => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, now + offset);
+                    gain.gain.setValueAtTime(0, now + offset);
+                    gain.gain.linearRampToValueAtTime(0.2, now + offset + 0.05);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + offset + duration);
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start(now + offset);
+                    osc.stop(now + offset + duration);
                 };
-                note(660, ctx.currentTime, 0.4); note(523, ctx.currentTime + 0.2, 0.6);
-            } catch (e) {}
+                
+                // ピン・ポン
+                note(660, 0, 0.6);
+                note(523, 0.5, 0.8);
+            } catch (e) {
+                console.error("Sound Error:", e);
+            }
         }
     </script>
 </body>
