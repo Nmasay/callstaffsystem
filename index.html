@@ -275,14 +275,12 @@
         // --- ロジック ---
         window.switchGroup = async (g) => {
             await saveUpdates({ activeGroup: g });
-            location.reload();
         };
 
         window.toggleSkip = async (gKey, idx) => {
             const grps = JSON.parse(JSON.stringify(callingAppState.groups));
             grps[gKey].members[idx].disabled = !grps[gKey].members[idx].disabled;
             await saveUpdates({ groups: grps });
-            location.reload();
         };
 
         window.moveItem = async (gKey, idx, dir) => {
@@ -303,7 +301,6 @@
                 group.currentIndex--;
             }
             await saveUpdates({ groups: grps });
-            location.reload();
         };
 
         window.removeItem = async (gKey, idx) => {
@@ -315,14 +312,12 @@
                 group.currentIndex = group.members.length - 1;
             }
             await saveUpdates({ groups: grps });
-            location.reload();
         };
 
         window.resetGroup = async (gKey) => {
             const grps = JSON.parse(JSON.stringify(callingAppState.groups));
             grps[gKey].currentIndex = 0;
             await saveUpdates({ groups: grps });
-            location.reload();
         };
 
         // 編集モード切替
@@ -352,7 +347,9 @@
             document.getElementById('groupIndicator').textContent = theme.label;
             
             const nameEl = document.getElementById('nameDisplay');
-            nameEl.textContent = currentMember.name;
+            nameEl.innerHTML = `
+                ${currentMember.name}<span class="text-3xl md:text-5xl text-slate-300 ml-4 font-normal align-baseline">x${currentMember.count || 0}</span>
+            `;
             nameEl.className = `text-6xl md:text-8xl font-black tracking-tight leading-tight break-words px-4 ${currentMember.disabled ? 'text-slate-200' : 'text-slate-800'}`;
             
             document.getElementById('callingHeader').className = `p-6 text-center text-white transition-theme duration-500 ${currentMember.disabled ? 'bg-slate-400' : theme.bg}`;
@@ -393,7 +390,6 @@
                                 <div class="flex flex-col truncate">
                                     <div class="flex items-center gap-2">
                                         <span class="font-bold text-sm truncate text-slate-600 ${m.disabled ? 'line-through decoration-slate-400' : ''}">${m.name}</span>
-                                        <span class="text-xs font-bold bg-slate-100 text-slate-500 px-2 py-0.5 rounded-md font-mono whitespace-nowrap">x${m.count || 0}</span>
                                     </div>
                                     ${m.disabled ? '<span class="text-[9px] text-slate-400 font-bold">スキップ</span>' : ''}
                                 </div>
@@ -431,7 +427,6 @@
                 group.currentIndex = nextIdx;
                 group.members[nextIdx].count = (group.members[nextIdx].count || 0) + 1;
                 await saveUpdates({ groups: grps, triggerChime: true });
-                location.reload();
             }
         };
 
@@ -442,7 +437,7 @@
                 const grps = JSON.parse(JSON.stringify(callingAppState.groups));
                 grps[callingAppState.activeGroup].members.push({ name: input.value.trim(), disabled: false, count: 0 });
                 await saveUpdates({ groups: grps });
-                location.reload();
+                input.value = '';
             }
         };
 
@@ -454,7 +449,7 @@
                 grps[callingAppState.activeGroup].members = names.map(n => ({ name: n, disabled: false, count: 0 }));
                 grps[callingAppState.activeGroup].currentIndex = 0;
                 await saveUpdates({ groups: grps });
-                location.reload();
+                document.getElementById('bulkInput').value = '';
             }
         };
 
@@ -464,7 +459,6 @@
                 grps[callingAppState.activeGroup].members = [];
                 grps[callingAppState.activeGroup].currentIndex = 0;
                 await saveUpdates({ groups: grps });
-                location.reload();
             }
         };
 
