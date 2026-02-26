@@ -84,8 +84,16 @@
                     </div>
 
                     <div class="p-6 bg-slate-50 border-t border-slate-100">
+                        <div id="locationSelector" class="grid grid-cols-3 gap-2 mb-4">
+                            <button data-loc="1番" class="loc-btn py-3 rounded-xl font-bold border bg-white text-slate-400 hover:bg-slate-100 transition-all">1番</button>
+                            <button data-loc="2番" class="loc-btn py-3 rounded-xl font-bold border bg-white text-slate-400 hover:bg-slate-100 transition-all">2番</button>
+                            <button data-loc="3番" class="loc-btn py-3 rounded-xl font-bold border bg-white text-slate-400 hover:bg-slate-100 transition-all">3番</button>
+                            <button data-loc="4番" class="loc-btn py-3 rounded-xl font-bold border bg-white text-slate-400 hover:bg-slate-100 transition-all">4番</button>
+                            <button data-loc="5番" class="loc-btn py-3 rounded-xl font-bold border bg-white text-slate-400 hover:bg-slate-100 transition-all">5番</button>
+                            <button data-loc="第2ショー" class="loc-btn py-3 rounded-xl font-bold border bg-white text-slate-400 hover:bg-slate-100 transition-all">第2ショー</button>
+                        </div>
                         <button id="nextBtn" class="w-full flex items-center justify-center gap-3 py-6 px-8 text-white rounded-2xl font-bold shadow-xl transition-theme active:scale-[0.98]">
-                            <span id="nextBtnText" class="text-xl">次の人を呼び出す</span>
+                            <span id="nextBtnText" class="text-xl">次の人</span>
                             <i id="nextBtnIcon" data-lucide="chevron-right" class="w-7 h-7"></i>
                         </button>
                     </div>
@@ -142,8 +150,7 @@
 
         <footer class="flex justify-between items-center text-[10px] text-slate-400 px-4">
             <div class="flex items-center gap-4">
-                <span><i data-lucide="volume-2" class="inline w-3 h-3"></i> チャイム同期: 有効</span>
-                <span id="syncStatus" class="border-l pl-4 font-mono">Initializing...</span>
+                <span id="syncStatus" class="font-mono">Initializing...</span>
             </div>
             <div id="authStatus" class="hidden md:block"></div>
         </footer>
@@ -182,13 +189,13 @@
         // アプリの状態
         let callingAppState = {
             activeGroup: 'A',
+            selectedLocation: null,
             groups: {
                 A: { currentIndex: 0, members: [] },
                 B: { currentIndex: 0, members: [] },
                 C: { currentIndex: 0, members: [] },
                 D: { currentIndex: 0, members: [] }
-            },
-            triggerChime: false
+            }
         };
 
         let currentUid = null;
@@ -221,27 +228,23 @@
             onSnapshot(statusDocRef, (snap) => {
                 if (snap.exists()) {
                     const data = snap.data();
-                    const chimeWasOff = !callingAppState.triggerChime;
                     
                     // プレーンなオブジェクトにディープコピーして readonly を回避
                     callingAppState = JSON.parse(JSON.stringify(data));
                     
                     renderUI();
                     
-                    if (callingAppState.triggerChime && chimeWasOff) {
-                        playChimeSound();
-                    }
                     document.getElementById('syncStatus').textContent = "クラウド同期中";
                 } else {
                     const initial = {
                         activeGroup: 'A',
+                        selectedLocation: null,
                         groups: {
                             A: { currentIndex: 0, members: [{ name: "早番A-1", disabled: false, count: 0 }] },
                             B: { currentIndex: 0, members: [{ name: "早番B-1", disabled: false, count: 0 }] },
                             C: { currentIndex: 0, members: [{ name: "遅番C-1", disabled: false, count: 0 }] },
                             D: { currentIndex: 0, members: [{ name: "遅番D-1", disabled: false, count: 0 }] }
                         },
-                        triggerChime: false,
                         lastUpdated: Date.now()
                     };
                     setDoc(statusDocRef, initial);
@@ -270,6 +273,11 @@
         // --- ロジック ---
         window.switchGroup = async (g) => {
             await saveUpdates({ activeGroup: g });
+        };
+
+        window.selectLocation = async (loc) => {
+            await saveUpdates({ selectedLocation: loc });
+            location.reload();
         };
 
         window.toggleSkip = async (gKey, idx) => {
@@ -361,10 +369,17 @@
                 calledBadge.classList.add('hidden');
             }
 
+            // 場所ボタンのスタイル更新
+            const currentLoc = callingAppState.selectedLocation;
+            document.querySelectorAll('.loc-btn').forEach(btn => {
+                const isSelected = btn.dataset.loc === currentLoc;
+                btn.className = isSelected ? `loc-btn py-3 rounded-xl font-bold border-2 border-blue-600 bg-blue-600 text-white shadow-md transition-all scale-105` : `loc-btn py-3 rounded-xl font-bold border bg-white text-slate-400 hover:bg-slate-100 border-slate-200 transition-all`;
+            });
+
             const nBtn = document.getElementById('nextBtn');
             const colorClass = `${theme.bg} ${theme.hover} ${theme.shadow}`;
             nBtn.className = `w-full flex items-center justify-center gap-3 py-6 px-8 text-white rounded-2xl font-bold shadow-xl transition-theme active:scale-[0.98] ${colorClass}`;
-            document.getElementById('nextBtnText').textContent = "次の人を呼び出す";
+            document.getElementById('nextBtnText').textContent = "次の人";
 
             // Render all 4 lists
             ['A', 'B', 'C', 'D'].forEach(gKey => {
@@ -409,6 +424,32 @@
             lucide.createIcons();
         }
 
+        // 場所ボタンイベント
+        document.getElementById('locationSelector').addEventListener('click', (e) => {
+            const btn = e.target.closest('.loc-btn');
+            if (btn) {
+                // 場所を選択して保存
+                const loc = btn.dataset.loc;
+                // 次の人へ進む処理
+                const grps = JSON.parse(JSON.stringify(callingAppState.groups));
+                const group = grps[callingAppState.activeGroup];
+                if (!group.members || group.members.length === 0) return;
+                
+                let nextIdx = group.currentIndex;
+                let found = false;
+                for (let i = 1; i <= group.members.length; i++) {
+                    const check = (group.currentIndex + i) % group.members.length;
+                    if (!group.members[check].disabled) { nextIdx = check; found = true; break; }
+                }
+                if (found) {
+                    group.currentIndex = nextIdx;
+                    group.members[nextIdx].count = (group.members[nextIdx].count || 0) + 1;
+                    // 場所とグループ情報をまとめて更新してリロード
+                    saveUpdates({ groups: grps, selectedLocation: loc }).then(() => location.reload());
+                }
+            }
+        });
+
         // イベントバインド
         document.getElementById('nextBtn').onclick = async () => {
             const grps = JSON.parse(JSON.stringify(callingAppState.groups));
@@ -423,7 +464,7 @@
             if (found) {
                 group.currentIndex = nextIdx;
                 group.members[nextIdx].count = (group.members[nextIdx].count || 0) + 1;
-                await saveUpdates({ groups: grps, triggerChime: true });
+                await saveUpdates({ groups: grps });
             }
         };
 
@@ -458,36 +499,6 @@
                 await saveUpdates({ groups: grps });
             }
         };
-
-        function playChimeSound() {
-            try {
-                const AudioContext = window.AudioContext || window.webkitAudioContext;
-                if (!AudioContext) return;
-                
-                const ctx = new AudioContext();
-                const now = ctx.currentTime;
-                
-                const note = (freq, offset, duration) => {
-                    const osc = ctx.createOscillator();
-                    const gain = ctx.createGain();
-                    osc.type = 'sine';
-                    osc.frequency.setValueAtTime(freq, now + offset);
-                    gain.gain.setValueAtTime(0, now + offset);
-                    gain.gain.linearRampToValueAtTime(0.2, now + offset + 0.05);
-                    gain.gain.exponentialRampToValueAtTime(0.01, now + offset + duration);
-                    osc.connect(gain);
-                    gain.connect(ctx.destination);
-                    osc.start(now + offset);
-                    osc.stop(now + offset + duration);
-                };
-                
-                // ピン・ポン
-                note(660, 0, 0.6);
-                note(523, 0.5, 0.8);
-            } catch (e) {
-                console.error("Sound Error:", e);
-            }
-        }
     </script>
 </body>
 </html>

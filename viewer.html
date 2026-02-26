@@ -25,6 +25,9 @@
                 <div id="nameDisplay" class="text-7xl md:text-9xl font-black tracking-tight leading-tight break-words px-4 text-slate-800">
                     接続中...
                 </div>
+                <div id="locationDisplay" class="hidden mt-6 text-5xl font-bold text-blue-600 animate-pulse">
+                    <!-- 場所表示 -->
+                </div>
                 <div id="calledBadge" class="hidden mt-8 px-8 py-3 rounded-full font-bold text-2xl shadow-md animate-pulse text-white">
                     呼び出し中
                 </div>
@@ -32,11 +35,6 @@
                     一時スキップ中
                 </div>
             </div>
-            
-            <!-- 音声再生許可のためのボタン（初回クリック用） -->
-            <button id="enableSoundBtn" class="absolute bottom-4 right-4 bg-white/50 p-3 rounded-full text-slate-400 hover:text-slate-600 hover:bg-white transition-all z-50" onclick="this.remove()" title="音声再生を有効にする">
-                <i data-lucide="volume-2" class="w-6 h-6"></i>
-            </button>
         </div>
         
         <div class="mt-4 text-center text-slate-400 text-xs font-mono">
@@ -73,9 +71,12 @@
 
         let callingAppState = {
             activeGroup: 'A',
-            groups: {},
-            triggerChime: false
+            selectedLocation: null,
+            groups: {}
         };
+
+        let lastLocation = null;
+        let isFirstRun = true;
 
         // 認証
         signInAnonymously(auth).catch(console.error);
@@ -89,14 +90,17 @@
             onSnapshot(statusDocRef, (snap) => {
                 if (snap.exists()) {
                     const data = snap.data();
-                    const chimeWasOff = !callingAppState.triggerChime;
+                    
+                    if (!isFirstRun && data.selectedLocation !== lastLocation) {
+                        location.reload();
+                        return;
+                    }
+                    lastLocation = data.selectedLocation;
+                    isFirstRun = false;
+
                     callingAppState = data;
                     
                     renderUI();
-                    
-                    if (callingAppState.triggerChime && chimeWasOff) {
-                        playChimeSound();
-                    }
                     document.getElementById('syncStatus').textContent = "● LIVE SYNC";
                 }
             });
@@ -119,6 +123,14 @@
             document.getElementById('callingHeader').className = `relative py-2 px-4 text-center text-white transition-theme duration-500 flex items-center justify-center gap-4 min-h-[64px] ${currentMember.disabled ? 'bg-slate-400' : theme.bg}`;
             document.getElementById('mainBell').className = `w-10 h-10 text-white ${!currentMember.disabled ? 'animate-bounce' : 'opacity-30'}`;
             document.getElementById('skipBadge').classList.toggle('hidden', !currentMember.disabled);
+
+            const locEl = document.getElementById('locationDisplay');
+            if (callingAppState.selectedLocation && !currentMember.disabled) {
+                locEl.textContent = callingAppState.selectedLocation;
+                locEl.classList.remove('hidden');
+            } else {
+                locEl.classList.add('hidden');
+            }
             
             const calledBadge = document.getElementById('calledBadge');
             if (!currentMember.disabled && groupData.members && groupData.members.length > 0) {
@@ -129,30 +141,6 @@
             }
             
             lucide.createIcons();
-        }
-
-        function playChimeSound() {
-            try {
-                const AudioContext = window.AudioContext || window.webkitAudioContext;
-                if (!AudioContext) return;
-                const ctx = new AudioContext();
-                const now = ctx.currentTime;
-                const note = (freq, offset, duration) => {
-                    const osc = ctx.createOscillator();
-                    const gain = ctx.createGain();
-                    osc.type = 'sine';
-                    osc.frequency.setValueAtTime(freq, now + offset);
-                    gain.gain.setValueAtTime(0, now + offset);
-                    gain.gain.linearRampToValueAtTime(0.2, now + offset + 0.05);
-                    gain.gain.exponentialRampToValueAtTime(0.01, now + offset + duration);
-                    osc.connect(gain);
-                    gain.connect(ctx.destination);
-                    osc.start(now + offset);
-                    osc.stop(now + offset + duration);
-                };
-                note(660, 0, 0.6);
-                note(523, 0.5, 0.8);
-            } catch (e) { console.error(e); }
         }
     </script>
 </body>
