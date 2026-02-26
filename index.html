@@ -276,6 +276,7 @@
             const grps = JSON.parse(JSON.stringify(callingAppState.groups));
             grps[gKey].members[idx].disabled = !grps[gKey].members[idx].disabled;
             await saveUpdates({ groups: grps });
+            location.reload();
         };
 
         window.moveItem = async (gKey, idx, dir) => {
